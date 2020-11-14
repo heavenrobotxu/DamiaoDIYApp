@@ -24,7 +24,7 @@ class DuplexSwipeActivity : AppCompatActivity() {
             srl_duplex_swipe_bg.postDelayed({
                 initItem()
                 //使顶部刷新球消失
-                srl_duplex_swipe_bg.setTopRefreshing(false)
+                srl_duplex_swipe_bg.isTopRefreshing = false
                 rv_duplex_swipe_info.adapter?.notifyDataSetChanged()
             }, 3000)
         }
@@ -38,9 +38,10 @@ class DuplexSwipeActivity : AppCompatActivity() {
                 rv_duplex_swipe_info.adapter?.notifyItemRangeInserted(items.size - 1, 10)
                 rv_duplex_swipe_info.scrollToPosition(oldSize)
                 //使底部刷新球消失
-                srl_duplex_swipe_bg.setBottomRefreshing(false)
+                srl_duplex_swipe_bg.isBottomRefreshing = false
             }, 3000)
         }
+        srl_duplex_swipe_bg.setColorSchemeResources(R.color.colorAccent, R.color.colorPrimary)
         initItem()
         rv_duplex_swipe_info.adapter = PikachuAdapter()
     }
@@ -68,10 +69,10 @@ class DuplexSwipeActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: PikachuViewHolder, position: Int) {
             holder.itemView.iv_item_game.setOnClickListener {
                 if (position == 0) {
-                    srl_duplex_swipe_bg.setTopRefreshing(true)
+                    srl_duplex_swipe_bg.isTopRefreshing = true
                 }
                 if (position == 1) {
-                    srl_duplex_swipe_bg.setBottomRefreshing(true)
+                    srl_duplex_swipe_bg.isBottomRefreshing = true
                 }
             }
         }
