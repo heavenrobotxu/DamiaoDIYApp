@@ -43,14 +43,13 @@ public class DuplexSwipeRefreshLayout extends ViewGroup implements NestedScrolli
     //指示球样式：默认
     public static final int DEFAULT = CircularProgressDrawable.DEFAULT;
 
-    public static final int DEFAULT_SLINGSHOT_DISTANCE = -1;
-
     @VisibleForTesting
     static final int CIRCLE_DIAMETER = 40;
     @VisibleForTesting
     static final int CIRCLE_DIAMETER_LARGE = 56;
 
     private static final String LOG_TAG = androidx.swiperefreshlayout.widget.SwipeRefreshLayout.class.getSimpleName();
+
     //指示球完全显示的透明度
     private static final int MAX_ALPHA = 255;
     //指示球的低透明度值：MAX / 3
@@ -350,31 +349,68 @@ public class DuplexSwipeRefreshLayout extends ViewGroup implements NestedScrolli
     }
 
     /**
-     * The refresh indicator starting and resting position is always positioned
-     * near the top of the refreshing content. This position is a consistent
-     * location, but can be adjusted in either direction based on whether or not
-     * there is a toolbar or actionbar present.
-     * <p>
-     * <strong>Note:</strong> Calling this will reset the position of the refresh indicator to
-     * <code>start</code>.
-     * </p>
-     *
-     * @param scale Set to true if there is no view at a higher z-order than where the progress
-     *              spinner is set to appear. Setting it to true will cause indicator to be scaled
-     *              up rather than clipped.
-     * @param start The offset in pixels from the top of this view at which the
-     *              progress spinner should appear.
-     * @param end   The offset in pixels from the top of this view at which the
-     *              progress spinner should come to rest after a successful swipe
-     *              gesture.
+     * 设置指示球的纯色背景
      */
-    public void setProgressViewOffset(boolean scale, int start, int end) {
+    public void setProgressBackgroundColorSchemeResource(@ColorRes int colorRes) {
+        setProgressBackgroundColorSchemeColor(ContextCompat.getColor(getContext(), colorRes));
+    }
+
+    /**
+     * Set the background color of the progress spinner disc.
+     *
+     * @param color
+     */
+    public void setProgressBackgroundColorSchemeColor(@ColorInt int color) {
+        mTopCircleView.setBackgroundColor(color);
+        mBottomCircleView.setBackgroundColor(color);
+    }
+
+    /**
+     * 设置指示球内部旋转条的颜色，可传入一个颜色资源数组
+     */
+    public void setColorSchemeResources(@ColorRes int... colorResIds) {
+        final Context context = getContext();
+        int[] colorRes = new int[colorResIds.length];
+        for (int i = 0; i < colorResIds.length; i++) {
+            colorRes[i] = ContextCompat.getColor(context, colorResIds[i]);
+        }
+        setColorSchemeColors(colorRes);
+    }
+
+    /**
+     * Set the colors used in the progress animation. The first
+     * color will also be the color of the bar that grows in response to a user
+     * swipe gesture.
+     *
+     * @param colors
+     */
+    public void setColorSchemeColors(@ColorInt int... colors) {
+        ensureTarget();
+        mTopProgress.setColorSchemeColors(colors);
+        mBottomProgress.setColorSchemeColors(colors);
+    }
+
+    /**
+     * 返回顶部指示球是否正在刷新
+     */
+    public boolean isTopRefreshing() {
+        return mTopRefreshing;
+    }
+
+    /**
+     * 返回底部指示球是否正在刷新
+     */
+    public boolean isBottomRefreshing() {
+        return mBottomRefreshing;
+    }
+
+    /**
+     * 设置指示球消失时是否附带缩小动画
+     */
+    public void setProgressViewScale(boolean scale) {
         mScale = scale;
-        mOriginalOffsetTop = start;
-        mTopSpinnerOffsetEnd = end;
-        mUsingCustomStart = true;
         resetTop();
-        mTopRefreshing = false;
+        resetBottom();
     }
 
     /**
@@ -394,30 +430,34 @@ public class DuplexSwipeRefreshLayout extends ViewGroup implements NestedScrolli
     }
 
     /**
-     * The refresh indicator resting position is always positioned near the top
-     * of the refreshing content. This position is a consistent location, but
-     * can be adjusted in either direction based on whether or not there is a
-     * toolbar or actionbar present.
+     * 设置顶部指示球的刷新阈值位置（同时也是悬垂刷新位置）
      *
-     * @param scale Set to true if there is no view at a higher z-order than where the progress
-     *              spinner is set to appear. Setting it to true will cause indicator to be scaled
-     *              up rather than clipped.
      * @param end   The offset in pixels from the top of this view at which the
      *              progress spinner should come to rest after a successful swipe
      *              gesture.
      */
-    public void setProgressViewEndTarget(boolean scale, int end) {
+    public void setTopProgressViewEndTarget(int end) {
         mTopSpinnerOffsetEnd = end;
-        mScale = scale;
         mTopCircleView.invalidate();
+    }
+
+    /**
+     * 设置底部指示球的刷新阈值位置（同时也是悬垂刷新位置）
+     *
+     * @param end   The offset in pixels from the top of this view at which the
+     *              progress spinner should come to rest after a successful swipe
+     *              gesture.
+     */
+    public void setBottomProgressViewEndTarget(int end) {
+        mBottomSpinnerOffsetEnd = end;
+        mBottomCircleView.invalidate();
     }
 
     /**
      * 设置额外的拉伸距离，设置的越大，指示球可以被拉伸的距离最大滑动阈值越远.
      *
      * @param slingshotDistance The distance in pixels that the refresh indicator can be pulled
-     *                          beyond its resting position. Use
-     *                          {@link #DEFAULT_SLINGSHOT_DISTANCE} to reset to the default value.
+     *                          beyond its resting position.
      */
     public void setSlingshotDistance(@Px int slingshotDistance) {
         mCustomSlingshotDistance = slingshotDistance;
@@ -527,6 +567,9 @@ public class DuplexSwipeRefreshLayout extends ViewGroup implements NestedScrolli
         }
     }
 
+    /**
+     * 初始化顶部、底部的指示球，并将其添加到SwipeLayout中
+     */
     private void createProgressView() {
         mTopCircleView = new CircleImageView(getContext(), CIRCLE_BG_LIGHT);
         mTopProgress = new CircularProgressDrawable(getContext());
@@ -674,6 +717,7 @@ public class DuplexSwipeRefreshLayout extends ViewGroup implements NestedScrolli
         }
     }
 
+    //开始顶部指示球的缩小动画
     void startTopScaleDownAnimation(AnimationListener listener) {
         mTopScaleDownAnimation = new Animation() {
             @Override
@@ -687,6 +731,7 @@ public class DuplexSwipeRefreshLayout extends ViewGroup implements NestedScrolli
         mTopCircleView.startAnimation(mTopScaleDownAnimation);
     }
 
+    //开始底部指示球的缩小动画
     void startBottomScaleDownAnimation(AnimationListener listener) {
         mBottomScaleDownAnimation = new Animation() {
             @Override
@@ -700,18 +745,22 @@ public class DuplexSwipeRefreshLayout extends ViewGroup implements NestedScrolli
         mBottomCircleView.startAnimation(mBottomScaleDownAnimation);
     }
 
+    //开始顶部指示球透明度变化为默认值动画（半透明）
     private void startTopProgressAlphaStartAnimation() {
         mTopAlphaStartAnimation = startTopAlphaAnimation(mTopProgress.getAlpha(), STARTING_PROGRESS_ALPHA);
     }
 
+    //开始底部指示球透明度变化为默认值动画（半透明）
     private void startBottomProgressAlphaStartAnimation() {
         mBottomAlphaStartAnimation = startBottomAlphaAnimation(mBottomProgress.getAlpha(), STARTING_PROGRESS_ALPHA);
     }
 
+    //开始顶部指示球透明度全满动画（完全显式）
     private void startTopProgressAlphaMaxAnimation() {
         mTopAlphaMaxAnimation = startTopAlphaAnimation(mTopProgress.getAlpha(), MAX_ALPHA);
     }
 
+    //开始底部指示球透明度全满动画（完全显式）
     private void startBottomProgressAlphaMaxAnimation() {
         mBottomAlphaMaxAnimation = startBottomAlphaAnimation(mBottomProgress.getAlpha(), MAX_ALPHA);
     }
@@ -754,77 +803,6 @@ public class DuplexSwipeRefreshLayout extends ViewGroup implements NestedScrolli
         mBottomCircleView.clearAnimation();
         mBottomCircleView.startAnimation(alpha);
         return alpha;
-    }
-
-    /**
-     * @deprecated Use {@link #setProgressBackgroundColorSchemeResource(int)}
-     */
-    @Deprecated
-    public void setProgressBackgroundColor(int colorRes) {
-        setProgressBackgroundColorSchemeResource(colorRes);
-    }
-
-    /**
-     * Set the background color of the progress spinner disc.
-     *
-     * @param colorRes Resource id of the color.
-     */
-    public void setProgressBackgroundColorSchemeResource(@ColorRes int colorRes) {
-        setProgressBackgroundColorSchemeColor(ContextCompat.getColor(getContext(), colorRes));
-    }
-
-    /**
-     * Set the background color of the progress spinner disc.
-     *
-     * @param color
-     */
-    public void setProgressBackgroundColorSchemeColor(@ColorInt int color) {
-        mTopCircleView.setBackgroundColor(color);
-    }
-
-    /**
-     * @deprecated Use {@link #setColorSchemeResources(int...)}
-     */
-    @Deprecated
-    public void setColorScheme(@ColorRes int... colors) {
-        setColorSchemeResources(colors);
-    }
-
-    /**
-     * Set the color resources used in the progress animation from color resources.
-     * The first color will also be the color of the bar that grows in response
-     * to a user swipe gesture.
-     *
-     * @param colorResIds
-     */
-    public void setColorSchemeResources(@ColorRes int... colorResIds) {
-        final Context context = getContext();
-        int[] colorRes = new int[colorResIds.length];
-        for (int i = 0; i < colorResIds.length; i++) {
-            colorRes[i] = ContextCompat.getColor(context, colorResIds[i]);
-        }
-        setColorSchemeColors(colorRes);
-    }
-
-    /**
-     * Set the colors used in the progress animation. The first
-     * color will also be the color of the bar that grows in response to a user
-     * swipe gesture.
-     *
-     * @param colors
-     */
-    public void setColorSchemeColors(@ColorInt int... colors) {
-        ensureTarget();
-        mTopProgress.setColorSchemeColors(colors);
-        mBottomProgress.setColorSchemeColors(colors);
-    }
-
-    /**
-     * @return Whether the SwipeRefreshWidget is actively showing refresh
-     * progress.
-     */
-    public boolean isRefreshing() {
-        return mTopRefreshing;
     }
 
     private void ensureTarget() {
